@@ -1,6 +1,9 @@
 import numpy as np
 import os
 import pyvista as pv
+from scipy.interpolate import griddata
+import vtk
+
 class Stratigraphy_Grid:
     
     ## reservoir description
@@ -8,6 +11,17 @@ class Stratigraphy_Grid:
     x0, x1, y0, y1 = 2000, 8000, 2000, 8000
     __version__ = '0.0.2'
     def __init__(self, num_grid = None, extent = None, positive_depth = False):
+        """
+        Initializes the ReservoirGrid object with the given parameters.
+
+        Parameters:
+            num_grid (list, optional): A list of three integers representing the number of grid points in the x, y, and z directions. Defaults to None.
+            extent (list, optional): A list of four floats representing the extent of the grid in the x0, x1, y0, and y1 directions. Defaults to None.
+            positive_depth (bool, optional): A boolean indicating whether the depth values should be positive. Defaults to False.
+
+        Returns:
+            None
+        """
         if num_grid is not None:
             [self.nx, self.ny, self.nz] = num_grid
         if num_grid is not None:
@@ -37,7 +51,56 @@ class Stratigraphy_Grid:
     def __str__(self):
         return f'{self.__class__.__name__}(nx={self.nx}, ny={self.ny}, nz={self.nz})'
     
+
+    def _add_value_to_grid(self, value, formation_name,value_name = 'Value'):
+        """
+        Add a value to the grid for a given formation. 
+        
+        Parameters:
+            value: array-like
+                The value to add to the grid.
+            formation_name: str
+                The name of the formation grid to add the value to.
+            value_name: str, optional
+                The name of the value being added. Default is 'Value'.
+        
+        Returns:
+            None
+        """
+        assert formation_name in self.formation_grids.keys(), 'No such formation grid is found. Please make sure the formation name is correct.'
+
+        X_index = np.linspace(0,self.nx-1,self.nx)
+        Y_index = np.linspace(0,self.ny-1,self.ny)
+        Z_index = np.linspace(0,self.nz-1,self.nz)
+        yy, zz, xx = np.meshgrid(Y_index,Z_index, X_index)
+        points = np.concatenate([zz.reshape(-1,1), yy.reshape(-1,1), xx.reshape(-1,1)], axis = 1)
+        values = value.reshape(-1,1)
+
+        X_index_new = np.linspace(-0.5,self.nx-0.5,self.nx+1)
+        Y_index_new = np.linspace(-0.5,self.ny-0.5,self.ny+1)
+        Z_index_new = np.linspace(-0.5,self.nz-0.5,self.nz+1)
+        yy_new, zz_new, xx_new = np.meshgrid(Y_index_new,Z_index_new, X_index_new)
+
+        grid_value = griddata(points, values, (zz_new,yy_new, xx_new), method='linear').squeeze()
+        flag = np.isnan(grid_value)
+        grid_value[flag] = griddata(points, values, (zz_new,yy_new, xx_new), method='nearest').squeeze()[flag]
+        
+        self.formation_grids[formation_name][value_name] = grid_value
+        print(f'{value_name} succesfully added to {formation_name}')
+        print(f'formation_grids[formation_name].keys are {list(self.formation_grids[formation_name].keys())}')
+
     def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, require_return = False):
+        """
+        Load the xx, yy, and zz coordinates for a given top and bottom surface.
+
+        Parameters:
+            top_surface_name (str): The name of the top surface.
+            bottom_surface_name (str): The name of the bottom surface.
+            require_return (bool, optional): Whether to return the xx, yy, and zz coordinates. Defaults to False.
+
+        Returns:
+            tuple or None: If require_return is True, returns a tuple containing the xx, yy, and zz coordinates. Otherwise, None.
+        """
         top =self.horizons[top_surface_name]
         bottom = self.horizons[bottom_surface_name]
         zcorn_upper = [] 
@@ -74,35 +137,139 @@ class Stratigraphy_Grid:
             formation_name = top_surface_name + '_to_' + bottom_surface_name + '_formation'
             self.formation_grids[formation_name] = {'xx': xx, 'yy': yy, 'zz': zz}
     
-    def visual_3D_from_formation_grid(self,formation_name, aspect_ratio= 10):
+    def visual_3D_from_formation_grid(self,formation_name, value_name = None, aspect_ratio= 10, show_edges=True, vertical_colorbar = True, add_observer = False):
+        """
+        Visualizes a 3D plot of a formation grid using the PyVista library.
+
+        Parameters:
+            formation_name (str): The name of the formation to visualize.
+            value_name (str, optional): The name of the value to visualize. Defaults to None.
+            aspect_ratio (float, optional): The aspect ratio of the plot. Defaults to 10.
+            show_edges (bool, optional): Whether to show edges of the mesh. Defaults to True.
+            vertical_colorbar (bool, optional): Whether to display the colorbar vertically. Defaults to True.
+            add_observer (bool, optional): Whether to add an observer to the plotter. Defaults to False.
+
+        Returns:
+            None
+        """
         xx = self.formation_grids[formation_name]['xx']
         yy = self.formation_grids[formation_name]['yy']
         zz = self.formation_grids[formation_name]['zz']
-        mesh = pv.StructuredGrid(xx, yy, zz)
-        mesh["depth"] = zz.ravel(order="F")
+        mesh = pv.StructuredGrid(xx, yy, zz)       
         plotter = pv.Plotter()
-        plotter.add_mesh(mesh, scalars=mesh.points[:, -1], show_edges=False,
-                        scalar_bar_args={'vertical': True})
-        plotter.show_grid()
-        plotter.set_scale(xscale=1, yscale=1, zscale=aspect_ratio)
+        mesh.points[:,-1] *=aspect_ratio
+        if value_name is None: 
+            mesh["depth"] = zz.ravel(order="F")
+            actor = plotter.add_mesh(mesh, 
+                            scalars=mesh.points[:, -1], 
+                            show_edges=show_edges,
+                            scalar_bar_args={'vertical': vertical_colorbar,
+                                             'title': "Depth"},
+                            )
+        else:
+            value = self.formation_grids[formation_name][value_name]
+            mesh[value_name] = value.ravel(order="C")
+            actor = plotter.add_mesh(mesh, 
+                            scalars=mesh[value_name], 
+                            show_edges=show_edges,
+                            scalar_bar_args={'vertical': vertical_colorbar,
+                                             'title': value_name},
+                            )
+        
+        well_loc_1 = [[3781.25,3781.25,-30000],[3781.25,3781.25,-32000]]
+        well_1 = pv.Line(well_loc_1[0], well_loc_1[1])
+        well_loc_2 = [[3781.25,6218.75,-30000],[3781.25,6218.75,-32000]]
+        well_2 = pv.Line(well_loc_2[0], well_loc_2[1])
+        well_loc_3 = [[6218.75,6218.75,-30000],[6218.75,6218.75,-32000]]
+        well_3 = pv.Line(well_loc_3[0], well_loc_3[1])
+        well_loc_4 = [[6218.75,3781.25,-30000],[6218.75,3781.25,-32000]]
+        well_4 = pv.Line(well_loc_4[0], well_loc_4[1])
+
+        actor = plotter.add_point_labels([well_loc_1[0], well_loc_1[1]], ["Injector 1", ""], font_size=15, point_color="red", text_color="red")
+        actor = plotter.add_point_labels([well_loc_2[0], well_loc_2[1]], ["Injector 2", ""], font_size=15, point_color="red", text_color="red")
+        actor = plotter.add_point_labels([well_loc_3[0], well_loc_3[1]], ["Injector 3", ""], font_size=15, point_color="red", text_color="red")
+        actor = plotter.add_point_labels([well_loc_4[0], well_loc_4[1]], ["Injector 4", ""], font_size=15, point_color="red", text_color="red")
+        actor = plotter.add_mesh(well_1, color="b", line_width=6)
+        actor = plotter.add_mesh(well_2, color="b", line_width=6)
+        actor = plotter.add_mesh(well_3, color="b", line_width=6)
+        actor = plotter.add_mesh(well_4, color="b", line_width=6)
+        
+        if add_observer:
+            def my_cpos_callback(*args):
+                """
+                Adds the current camera position to the plotter as text.
+
+                Parameters:
+                    *args: Variable length argument list.
+
+                Returns:
+                    None
+                """
+                plotter.add_text(str(plotter.camera_position), name="cpos")
+                return
+            plotter.iren.add_observer(vtk.vtkCommand.EndInteractionEvent, my_cpos_callback)
+        else:
+            pos_cam = [(-6830, -6208, -25970), (4859, 4970, -31683), (0.2470, 0.2232, 0.9429)]
+            actor = plotter.camera_position = pos_cam
+
+        actor = plotter.show_grid()
+        actor = plotter.show_bounds(
+                    grid='back',
+                    location='origin',
+                    ticks='both',
+                    n_xlabels = 4,
+                    n_ylabels = 4,
+                    n_zlabels = 1,
+                    show_xlabels=True,
+                    show_ylabels=True,
+                    show_zlabels=True,
+                    xtitle='Easting',
+                    ytitle='Northing',
+                    ztitle='Depth',
+                    font_size=13,
+                    bold=False
+                    )
         plotter.show()
 
+
     def print_horizons(self):
+        """
+        A function to print the horizons along with their depths.
+        """
         print(f'Horizon are ...: ')
         for key, value in self.horizons.items():
             print(f'- {key} is at depth of {value.triangles_center[:,-1].mean():.2f}')
 
     def print_formations(self):
+        """
+        A function to print the formations stored in the formations dictionary.
+        No parameters.
+        No return value.
+        """
         print(f'Formations are ...: ')
         for key, value in self.formations.items():
             print(f'- {key}')
             
     def print_formation_grids(self):
+        """
+        Print the formation grids.
+
+        This function prints the formation grids stored in the `formation_grids` dictionary. It iterates over each key-value pair in the dictionary and prints the key followed by the corresponding value.
+
+        Parameters:
+        - self: The instance of the class.
+
+        Return:
+        - None
+        """
         print(f'formation_grids are ...: ')
         for key, value in self.formation_grids.items():
             print(f'- {key}')
     
     def print_formation_meta_grid(self):
+        """
+        A function that prints the formation_meta_grid items.
+        """
         print(f'formation_meta_grid are ...: ')
         for key, value in self.formation_meta_grid.items():
             print(f'- {key}')
@@ -273,7 +440,7 @@ if __name__ == '__main__':
     import numpy as np
     from scipy.spatial import Delaunay
     import trimesh
-    from reservoir_grid import Stratigraphy_Grid
+    # from reservoir_grid import Stratigraphy_Grid
     ## basic settings
 
     epsilon = 1E-5
@@ -328,4 +495,4 @@ if __name__ == '__main__':
     grid.load_horizons(bottom,'bottom')
     grid.cmg_corner_point_generate('top','bottom')
     grid.load_xx_yy_zz('top','bottom')
-    grid.visual_3D_from_formation_grid('top_to_bottom_formation')
+    grid.visual_3D_from_formation_grid('top_to_bottom_formation',vertical_colorbar =False)
