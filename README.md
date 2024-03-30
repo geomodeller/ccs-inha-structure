@@ -8,7 +8,7 @@
 
 We believe this workflow offers valuable insights into efficiently generating synthetic yet realistic surfaces applicable to Carbon Capture and Storage (CCS), hydrogen (H2) storage, or hydrocarbon development. It was developed during our research into integrating 4D seismic data in CCS workflows.
 
-'Hi
+To access the workflow, simply open the **"main.ipynb"** file. It includes comprehensive instructions on how to implement this demonstration.
 
 For any inquiries, concerns, or feedback, please don't hesitate to reach out to us at honggeun.jo@inha.ac.kr."
 
