@@ -6,7 +6,7 @@ class Stratigraphy_Grid:
     ## reservoir description
     nx, ny, nz = 32, 32, 16
     x0, x1, y0, y1 = 2000, 8000, 2000, 8000
-    __version__ = '0.0.1'
+    __version__ = '0.0.2'
     def __init__(self, num_grid = None, extent = None, positive_depth = False):
         if num_grid is not None:
             [self.nx, self.ny, self.nz] = num_grid
@@ -14,8 +14,8 @@ class Stratigraphy_Grid:
             [self.x0, self.x1, self.y0, self.y1] = extent 
         
         self.horizons = {}
-        self.formations = {}     # for cmg
-        self.formation_grids = {}# for pyvista
+        self.formations = {} # for cmg
+        self.formation_grids = {} # for pyvista
         self.formation_meta_grid = {} # for meta-data
 
         self._meshing_extent()
@@ -28,6 +28,64 @@ class Stratigraphy_Grid:
             self.base = + 99999
             self.normal_vector = np.array([0,0,-1], dtype = np.float64).reshape(-1,3)
             pass
+
+    def __version__(self):
+        print(f'The current version is {self.__version__}')
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(nx={self.nx}, ny={self.ny}, nz={self.nz})'
+    def __str__(self):
+        return f'{self.__class__.__name__}(nx={self.nx}, ny={self.ny}, nz={self.nz})'
+    
+    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, require_return = False):
+        top =self.horizons[top_surface_name]
+        bottom = self.horizons[bottom_surface_name]
+        zcorn_upper = [] 
+        zcorn_lower = [] 
+        for x_, y_ in zip(self.coord_xy[0].flatten(), self.coord_xy[1].flatten()):
+            _, _, location = top.ray.intersects_id(np.array([x_,y_,self.base]).reshape(-1,3),
+                                                    self.normal_vector,
+                                                    return_locations = True,
+                                                    multiple_hits = False)
+            assert len(location) != 0, 'no intersect found'
+            assert len(location) <2, 'more than two intersects'
+            zcorn_upper.append(location[0][-1])
+            _, _, location = bottom.ray.intersects_id(np.array([x_,y_,self.base]).reshape(-1,3),
+                                                    self.normal_vector,
+                                                    return_locations = True,
+                                                    multiple_hits = False)
+            assert len(location) != 0, 'no intersect found'
+            assert len(location) <2, 'more than two intersects'   
+            zcorn_lower.append(location[0][-1])
+
+        zcorns = []
+        for z_0, z_1 in zip(zcorn_upper, zcorn_lower):
+            zcorns.append(np.linspace(z_0, z_1, self.nz+1))
+
+        zz = np.array(zcorns).T.reshape(-1, self.ny+1, self.nx +1).T
+        xx = self.coord_xy[0].reshape(1, self.ny+1, self.nx+1).T
+        yy = self.coord_xy[1].reshape(1, self.ny+1, self.nx+1).T
+
+        xx = np.repeat(xx, zz.shape[-1], axis=-1)
+        yy = np.repeat(yy, zz.shape[-1], axis=-1)
+        if require_return:
+            return xx, yy, zz
+        else:
+            formation_name = top_surface_name + '_to_' + bottom_surface_name + '_formation'
+            self.formation_grids[formation_name] = {'xx': xx, 'yy': yy, 'zz': zz}
+    
+    def visual_3D_from_formation_grid(self,formation_name, aspect_ratio= 10):
+        xx = self.formation_grids[formation_name]['xx']
+        yy = self.formation_grids[formation_name]['yy']
+        zz = self.formation_grids[formation_name]['zz']
+        mesh = pv.StructuredGrid(xx, yy, zz)
+        mesh["depth"] = zz.ravel(order="F")
+        plotter = pv.Plotter()
+        plotter.add_mesh(mesh, scalars=mesh.points[:, -1], show_edges=False,
+                        scalar_bar_args={'vertical': True})
+        plotter.show_grid()
+        plotter.set_scale(xscale=1, yscale=1, zscale=aspect_ratio)
+        plotter.show()
 
     def print_horizons(self):
         print(f'Horizon are ...: ')
@@ -49,15 +107,10 @@ class Stratigraphy_Grid:
         for key, value in self.formation_meta_grid.items():
             print(f'- {key}')
 
-
     def load_horizons(self, surface, name='random_surface'):
         self.horizons[name] = surface
 
     
-    def _meshing_extent(self):
-        mesh_x_, mesh_y_ = np.linspace(self.x0, self.x1, self.nx+1), np.linspace(self.y0, self.y1, self.ny+1)
-        self.coord_xy = np.meshgrid(mesh_x_,mesh_y_)
-
     def meta_corner_point_generate(self, top_surface_name, bottom_surface_name, deposition_pattern = 'proportional'):
 
         # dimension goes by [eight corners] x [X,Y,Z] x [K] x [J] x [I]
@@ -90,34 +143,6 @@ class Stratigraphy_Grid:
         self.formation_meta_grid[formation_name] = meta_corners
 
 
-    def _compute_zcorns(self, top_surface_name, bottom_surface_name,  deposition_pattern = 'proportional'):
-        top =self.horizons[top_surface_name]
-        bottom = self.horizons[bottom_surface_name]
-
-        zcorn_upper = [] 
-        zcorn_lower = [] 
-        for x_, y_ in zip(self.coord_xy[0].flatten(), self.coord_xy[1].flatten()):
-            _, _, location = top.ray.intersects_id(np.array([x_,y_,self.base]).reshape(-1,3),
-                                                    self.normal_vector,
-                                                    return_locations = True,
-                                                    multiple_hits = False)
-            assert len(location) != 0, 'no intersect found'
-            assert len(location) <2, 'more than two intersects'
-            zcorn_upper.append(location[0][-1])
-            _, _, location = bottom.ray.intersects_id(np.array([x_,y_,self.base]).reshape(-1,3),
-                                                    self.normal_vector,
-                                                    return_locations = True,
-                                                    multiple_hits = False)
-            assert len(location) != 0, 'no intersect found'
-            assert len(location) <2, 'more than two intersects'   
-            zcorn_lower.append(location[0][-1])
-
-        zcorns = []
-        for z_0, z_1 in zip(zcorn_upper, zcorn_lower):
-            zcorns.append(np.linspace(z_0, z_1, self.nz+1))
-
-        zcorns = np.array(zcorns).reshape(self.nz + 1, self.ny + 1, self.nx +1)
-        return zcorns
     
     def cmg_corner_point_generate(self, top_surface_name, bottom_surface_name, 
                                   require_return = False, deposition_pattern = 'proportional'):
@@ -209,18 +234,14 @@ class Stratigraphy_Grid:
             f.close()
         pass
     
+    def _meshing_extent(self):
+        mesh_x_, mesh_y_ = np.linspace(self.x0, self.x1, self.nx+1), np.linspace(self.y0, self.y1, self.ny+1)
+        self.coord_xy = np.meshgrid(mesh_x_,mesh_y_)
 
-    def __version__(self):
-        print(f'The current version is {self.__version__}')
-
-    def __repr__(self):
-        return f'{self.__class__.__name__}(nx={self.nx}, ny={self.ny}, nz={self.nz})'
-    def __str__(self):
-        return f'{self.__class__.__name__}(nx={self.nx}, ny={self.ny}, nz={self.nz})'
-    
-    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, require_return = False):
+    def _compute_zcorns(self, top_surface_name, bottom_surface_name,  deposition_pattern = 'proportional'):
         top =self.horizons[top_surface_name]
         bottom = self.horizons[bottom_surface_name]
+
         zcorn_upper = [] 
         zcorn_lower = [] 
         for x_, y_ in zip(self.coord_xy[0].flatten(), self.coord_xy[1].flatten()):
@@ -243,36 +264,13 @@ class Stratigraphy_Grid:
         for z_0, z_1 in zip(zcorn_upper, zcorn_lower):
             zcorns.append(np.linspace(z_0, z_1, self.nz+1))
 
-        zz = np.array(zcorns).T.reshape(-1, self.ny+1, self.nx +1).T
-        xx = self.coord_xy[0].reshape(1, self.ny+1, self.nx+1).T
-        yy = self.coord_xy[1].reshape(1, self.ny+1, self.nx+1).T
-
-        xx = np.repeat(xx, zz.shape[-1], axis=-1)
-        yy = np.repeat(yy, zz.shape[-1], axis=-1)
-        if require_return:
-            return xx, yy, zz
-        else:
-            formation_name = top_surface_name + '_to_' + bottom_surface_name + '_formation'
-            self.formation_grids[formation_name] = {'xx': xx, 'yy': yy, 'zz': zz}
-    
-    def visual_3D_from_formation_grid(self,formation_name, aspect_ratio= 10):
-        xx = self.formation_grids[formation_name]['xx']
-        yy = self.formation_grids[formation_name]['yy']
-        zz = self.formation_grids[formation_name]['zz']
-        mesh = pv.StructuredGrid(xx, yy, zz)
-        mesh["depth"] = zz.ravel(order="F")
-        plotter = pv.Plotter()
-        plotter.add_mesh(mesh, scalars=mesh.points[:, -1], show_edges=False,
-                        scalar_bar_args={'vertical': True})
-        plotter.show_grid()
-        plotter.set_scale(xscale=1, yscale=1, zscale=aspect_ratio)
-        plotter.show()
+        zcorns = np.array(zcorns).reshape(self.nz + 1, self.ny + 1, self.nx +1)
+        return zcorns
 
 
 if __name__ == '__main__':
     
     import numpy as np
-    import matplotlib.pyplot as plt
     from scipy.spatial import Delaunay
     import trimesh
     from reservoir_grid import Stratigraphy_Grid
