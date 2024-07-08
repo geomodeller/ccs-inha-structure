@@ -1,7 +1,7 @@
 # Python Parser for CMG-GEM Package: Open-Source Simulator Parser for Subsurface CO2 Storage
 
 ## Cite As:
-Jo, H. and Mejia, J., 2024. Python Parser for CMG-GEM Package. GitHub. Available at: https://github.com/geomodeller/ccs-inha-structure
+Jo, H. and Hernandez-Mejia, J., 2024. Python Parser for CMG-GEM Package. GitHub. Available at: https://github.com/geomodeller/ccs-inha-structure
 
 
 ## This workflow demonstrates a comprehensive process for:
