@@ -11,17 +11,6 @@ class Stratigraphy_Grid:
     x0, x1, y0, y1 = 2000, 8000, 2000, 8000
     __version__ = '0.0.2'
     def __init__(self, num_grid = None, extent = None, positive_depth = False):
-        """
-        Initializes the ReservoirGrid object with the given parameters.
-
-        Parameters:
-            num_grid (list, optional): A list of three integers representing the number of grid points in the x, y, and z directions. Defaults to None.
-            extent (list, optional): A list of four floats representing the extent of the grid in the x0, x1, y0, and y1 directions. Defaults to None.
-            positive_depth (bool, optional): A boolean indicating whether the depth values should be positive. Defaults to False.
-
-        Returns:
-            None
-        """
         if num_grid is not None:
             [self.nx, self.ny, self.nz] = num_grid
         if num_grid is not None:
@@ -53,20 +42,6 @@ class Stratigraphy_Grid:
     
 
     def _add_value_to_grid(self, value, formation_name,value_name = 'Value'):
-        """
-        Add a value to the grid for a given formation. 
-        
-        Parameters:
-            value: array-like
-                The value to add to the grid.
-            formation_name: str
-                The name of the formation grid to add the value to.
-            value_name: str, optional
-                The name of the value being added. Default is 'Value'.
-        
-        Returns:
-            None
-        """
         assert formation_name in self.formation_grids.keys(), 'No such formation grid is found. Please make sure the formation name is correct.'
 
         X_index = np.linspace(0,self.nx-1,self.nx)
@@ -90,17 +65,6 @@ class Stratigraphy_Grid:
         print(f'formation_grids[formation_name].keys are {list(self.formation_grids[formation_name].keys())}')
 
     def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, require_return = False):
-        """
-        Load the xx, yy, and zz coordinates for a given top and bottom surface.
-
-        Parameters:
-            top_surface_name (str): The name of the top surface.
-            bottom_surface_name (str): The name of the bottom surface.
-            require_return (bool, optional): Whether to return the xx, yy, and zz coordinates. Defaults to False.
-
-        Returns:
-            tuple or None: If require_return is True, returns a tuple containing the xx, yy, and zz coordinates. Otherwise, None.
-        """
         top =self.horizons[top_surface_name]
         bottom = self.horizons[bottom_surface_name]
         zcorn_upper = [] 
@@ -138,20 +102,6 @@ class Stratigraphy_Grid:
             self.formation_grids[formation_name] = {'xx': xx, 'yy': yy, 'zz': zz}
     
     def visual_3D_from_formation_grid(self,formation_name, value_name = None, aspect_ratio= 10, show_edges=True, vertical_colorbar = True, add_observer = False):
-        """
-        Visualizes a 3D plot of a formation grid using the PyVista library.
-
-        Parameters:
-            formation_name (str): The name of the formation to visualize.
-            value_name (str, optional): The name of the value to visualize. Defaults to None.
-            aspect_ratio (float, optional): The aspect ratio of the plot. Defaults to 10.
-            show_edges (bool, optional): Whether to show edges of the mesh. Defaults to True.
-            vertical_colorbar (bool, optional): Whether to display the colorbar vertically. Defaults to True.
-            add_observer (bool, optional): Whether to add an observer to the plotter. Defaults to False.
-
-        Returns:
-            None
-        """
         xx = self.formation_grids[formation_name]['xx']
         yy = self.formation_grids[formation_name]['yy']
         zz = self.formation_grids[formation_name]['zz']
@@ -210,6 +160,19 @@ class Stratigraphy_Grid:
             plotter.iren.add_observer(vtk.vtkCommand.EndInteractionEvent, my_cpos_callback)
         else:
             pos_cam = [(-6830, -6208, -25970), (4859, 4970, -31683), (0.2470, 0.2232, 0.9429)]
+            def my_cpos_callback(*args):
+                """
+                Adds the current camera position to the plotter as text.
+
+                Parameters:
+                    *args: Variable length argument list.
+
+                Returns:
+                    None
+                """
+                plotter.add_text(str(plotter.camera_position), name="cpos")
+                return
+            plotter.iren.add_observer(vtk.vtkCommand.EndInteractionEvent, my_cpos_callback)
             actor = plotter.camera_position = pos_cam
 
         actor = plotter.show_grid()
@@ -233,43 +196,21 @@ class Stratigraphy_Grid:
 
 
     def print_horizons(self):
-        """
-        A function to print the horizons along with their depths.
-        """
         print(f'Horizon are ...: ')
         for key, value in self.horizons.items():
             print(f'- {key} is at depth of {value.triangles_center[:,-1].mean():.2f}')
 
     def print_formations(self):
-        """
-        A function to print the formations stored in the formations dictionary.
-        No parameters.
-        No return value.
-        """
         print(f'Formations are ...: ')
         for key, value in self.formations.items():
             print(f'- {key}')
             
     def print_formation_grids(self):
-        """
-        Print the formation grids.
-
-        This function prints the formation grids stored in the `formation_grids` dictionary. It iterates over each key-value pair in the dictionary and prints the key followed by the corresponding value.
-
-        Parameters:
-        - self: The instance of the class.
-
-        Return:
-        - None
-        """
         print(f'formation_grids are ...: ')
         for key, value in self.formation_grids.items():
             print(f'- {key}')
     
     def print_formation_meta_grid(self):
-        """
-        A function that prints the formation_meta_grid items.
-        """
         print(f'formation_meta_grid are ...: ')
         for key, value in self.formation_meta_grid.items():
             print(f'- {key}')
@@ -468,16 +409,6 @@ if __name__ == '__main__':
     radius = 5000
     center = 5000
     power = 1
-
-    ## Version #3 - anticline (24.7.16)
-    depth = 3020
-    thickness = 150
-    diff = 250
-    radius = 5000
-    center = 5000
-    power = 1
-
-
     beta = (np.pi/radius)
     mesh_r = np.sqrt((mesh_x-center)**2 + (mesh_y-center)**2)
     mesh_r_scaled = beta*mesh_r

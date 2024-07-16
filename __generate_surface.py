@@ -15,13 +15,15 @@ def generate_structure_of_anticline_example():
     y_bins = np.arange(y_0,y_1,bin_size)
     mesh_x, mesh_y = np.meshgrid(x_bins, y_bins)
 
-    ## Version #2 - anticline
+
+    ## Version #3 - anticline (24.7.16)
     depth = 3020
     thickness = 150
-    diff = 100
+    diff = 250
     radius = 5000
     center = 5000
     power = 1
+
     beta = (np.pi/radius)
     mesh_r = np.sqrt((mesh_x-center)**2 + (mesh_y-center)**2)
     mesh_r_scaled = beta*mesh_r
@@ -41,7 +43,7 @@ def generate_structure_of_anticline_example():
                         faces=tri.simplices,
                         process=True)
     nx, ny, nz = 32, 32, 16
-    x0, x1, y0, y1 = 2000, 8000, 2000, 8000
+    x0, x1, y0, y1 = 500, 9500, 500, 9500
 
     grid = Stratigraphy_Grid(num_grid = [nx, ny, nz], extent = [x0, x1, y0, y1], positive_depth = False)
     grid.load_horizons(top,'top')
