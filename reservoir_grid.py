@@ -2,8 +2,8 @@ import numpy as np
 import os
 import pyvista as pv
 from scipy.interpolate import griddata
-import vtk
-
+from uuid import uuid4
+import trimesh
 class Stratigraphy_Grid:
     
     ## reservoir description
@@ -28,6 +28,7 @@ class Stratigraphy_Grid:
             [self.x0, self.x1, self.y0, self.y1] = extent 
         
         self.horizons = {}
+        self.faults = {}
         self.formations = {} # for cmg
         self.formation_grids = {} # for pyvista
         self.formation_meta_grid = {} # for meta-data
@@ -101,8 +102,8 @@ class Stratigraphy_Grid:
         Returns:
             tuple or None: If require_return is True, returns a tuple containing the xx, yy, and zz coordinates. Otherwise, None.
         """
-        top =self.horizons[top_surface_name]
-        bottom = self.horizons[bottom_surface_name]
+        top =self.horizons[top_surface_name]['trimesh']
+        bottom = self.horizons[bottom_surface_name]['trimesh']
         zcorn_upper = [] 
         zcorn_lower = [] 
         for x_, y_ in zip(self.coord_xy[0].flatten(), self.coord_xy[1].flatten()):
@@ -137,7 +138,7 @@ class Stratigraphy_Grid:
             formation_name = top_surface_name + '_to_' + bottom_surface_name + '_formation'
             self.formation_grids[formation_name] = {'xx': xx, 'yy': yy, 'zz': zz}
     
-    def visual_3D_from_formation_grid(self,formation_name, value_name = None, aspect_ratio= 10, show_edges=True, vertical_colorbar = True, add_observer = False):
+    def visual_3D_from_formation_grid(self, formation_name, value_name = None, aspect_ratio= 10, show_edges=True, vertical_colorbar = True, add_observer = False):
         """
         Visualizes a 3D plot of a formation grid using the PyVista library.
 
@@ -274,10 +275,48 @@ class Stratigraphy_Grid:
         for key, value in self.formation_meta_grid.items():
             print(f'- {key}')
 
-    def load_horizons(self, surface, name='random_surface'):
-        self.horizons[name] = surface
+    def load_faults(self, surface, name='random_fault'):
+        if name != 'random_fault':    
+            assert name not in self.faults.keys(), 'Horizon name already exists. Please choose another name.'
+            self._add_faults(surface, name)
+        else:
+            if name not in self.faults.keys():
+                self._add_faults(surface, name)
+            else:
+                for i in range(10):
+                    name = 'random_fault' + str(i)
+                    if name not in self.faults.keys():
+                        self._add_faults(surface, name)
+                        break
+                    if i == 9:
+                        assert False, 'Error: Too many unnamed faults. Please choose another name.'
+    def _add_faults(self, surface: trimesh.Trimesh, name:str, uuid:uuid4 = None):
+        self.faults[name]['trimesh'] = surface
+        if uuid is None:
+            self.faults[name]['uuid'] = uuid4()
 
-    
+
+    def load_horizons(self, surface, name='random_surface'):
+        if name != 'random_surface':    
+            assert name not in self.horizons.keys(), 'Horizon name already exists. Please choose another name.'
+            self._add_horizons(surface, name)
+        else:
+            if name not in self.horizons.keys():
+                self._add_horizons(surface, name)
+            else:
+                for i in range(10):
+                    name = 'random_surface' + str(i)
+                    if name not in self.horizons.keys():
+                        self._add_horizons(surface, name)
+                        break
+                    if i == 9:
+                        assert False, 'Error: Too many unnamed surface. Please choose another name.'
+    def _add_horizons(self, surface: trimesh.Trimesh, name:str, uuid:uuid4 = None):
+        self.horizons[name] = {}
+        self.horizons[name]['trimesh'] = surface
+        if uuid is None:
+            self.horizons[name]['uuid'] = uuid4()
+
     def meta_corner_point_generate(self, top_surface_name, bottom_surface_name, deposition_pattern = 'proportional'):
 
         # dimension goes by [eight corners] x [X,Y,Z] x [K] x [J] x [I]
@@ -313,8 +352,8 @@ class Stratigraphy_Grid:
     
     def cmg_corner_point_generate(self, top_surface_name, bottom_surface_name, 
                                   require_return = False, deposition_pattern = 'proportional'):
-        top =self.horizons[top_surface_name]
-        bottom = self.horizons[bottom_surface_name]
+        top =self.horizons[top_surface_name]['trimesh']
+        bottom = self.horizons[bottom_surface_name]['trimesh']
 
         zcorn_upper = [] 
         zcorn_lower = [] 
