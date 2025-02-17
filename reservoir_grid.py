@@ -176,41 +176,41 @@ class Stratigraphy_Grid:
                                              'title': value_name},
                             )
         
-        well_loc_1 = [[3781.25,3781.25,-30000],[3781.25,3781.25,-32000]]
-        well_1 = pv.Line(well_loc_1[0], well_loc_1[1])
-        well_loc_2 = [[3781.25,6218.75,-30000],[3781.25,6218.75,-32000]]
-        well_2 = pv.Line(well_loc_2[0], well_loc_2[1])
-        well_loc_3 = [[6218.75,6218.75,-30000],[6218.75,6218.75,-32000]]
-        well_3 = pv.Line(well_loc_3[0], well_loc_3[1])
-        well_loc_4 = [[6218.75,3781.25,-30000],[6218.75,3781.25,-32000]]
-        well_4 = pv.Line(well_loc_4[0], well_loc_4[1])
+        # well_loc_1 = [[3781.25,3781.25,-30000],[3781.25,3781.25,-32000]]
+        # well_1 = pv.Line(well_loc_1[0], well_loc_1[1])
+        # well_loc_2 = [[3781.25,6218.75,-30000],[3781.25,6218.75,-32000]]
+        # well_2 = pv.Line(well_loc_2[0], well_loc_2[1])
+        # well_loc_3 = [[6218.75,6218.75,-30000],[6218.75,6218.75,-32000]]
+        # well_3 = pv.Line(well_loc_3[0], well_loc_3[1])
+        # well_loc_4 = [[6218.75,3781.25,-30000],[6218.75,3781.25,-32000]]
+        # well_4 = pv.Line(well_loc_4[0], well_loc_4[1])
 
-        actor = plotter.add_point_labels([well_loc_1[0], well_loc_1[1]], ["Injector 1", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_2[0], well_loc_2[1]], ["Injector 2", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_3[0], well_loc_3[1]], ["Injector 3", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_4[0], well_loc_4[1]], ["Injector 4", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_mesh(well_1, color="b", line_width=6)
-        actor = plotter.add_mesh(well_2, color="b", line_width=6)
-        actor = plotter.add_mesh(well_3, color="b", line_width=6)
-        actor = plotter.add_mesh(well_4, color="b", line_width=6)
+        # actor = plotter.add_point_labels([well_loc_1[0], well_loc_1[1]], ["Injector 1", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_2[0], well_loc_2[1]], ["Injector 2", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_3[0], well_loc_3[1]], ["Injector 3", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_4[0], well_loc_4[1]], ["Injector 4", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_mesh(well_1, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_2, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_3, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_4, color="b", line_width=6)
         
-        if add_observer:
-            def my_cpos_callback(*args):
-                """
-                Adds the current camera position to the plotter as text.
+        # if add_observer:
+        #     def my_cpos_callback(*args):
+        #         """
+        #         Adds the current camera position to the plotter as text.
 
-                Parameters:
-                    *args: Variable length argument list.
+        #         Parameters:
+        #             *args: Variable length argument list.
 
-                Returns:
-                    None
-                """
-                plotter.add_text(str(plotter.camera_position), name="cpos")
-                return
-            plotter.iren.add_observer(vtk.vtkCommand.EndInteractionEvent, my_cpos_callback)
-        else:
-            pos_cam = [(-6830, -6208, -25970), (4859, 4970, -31683), (0.2470, 0.2232, 0.9429)]
-            actor = plotter.camera_position = pos_cam
+        #         Returns:
+        #             None
+        #         """
+        #         plotter.add_text(str(plotter.camera_position), name="cpos")
+        #         return
+        #     plotter.iren.add_observer(vtk.vtkCommand.EndInteractionEvent, my_cpos_callback)
+        # else:
+        #     pos_cam = [(-6830, -6208, -25970), (4859, 4970, -31683), (0.2470, 0.2232, 0.9429)]
+        #     actor = plotter.camera_position = pos_cam
 
         actor = plotter.show_grid()
         actor = plotter.show_bounds(
