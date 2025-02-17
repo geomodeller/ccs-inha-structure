@@ -89,7 +89,7 @@ class Stratigraphy_Grid:
         print(f'{value_name} succesfully added to {formation_name}')
         print(f'formation_grids[formation_name].keys are {list(self.formation_grids[formation_name].keys())}')
 
-    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, require_return = False):
+    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, fault_x, require_return = False):
         """
         Load the xx, yy, and zz coordinates for a given top and bottom surface.
 
@@ -128,6 +128,14 @@ class Stratigraphy_Grid:
         zz = np.array(zcorns).T.reshape(-1, self.ny+1, self.nx +1).T
         xx = self.coord_xy[0].reshape(1, self.ny+1, self.nx+1).T
         yy = self.coord_xy[1].reshape(1, self.ny+1, self.nx+1).T
+        fault_zz = np.array(fault_x).T.reshape(-1, self.ny+1, (self.nx * 0.5) +1).T
+
+        # fault_x = []
+        # for fault_x_0, fault_x_1 in zip(top_fault_x, bottom_fault_x):
+        #     fault_x.append(np.linspace(fault_x_0,fault_x_1, (self.nx * 0.5) + 1))
+
+        # fault_x = np.array(fault_x).reshape(self.nz + 1, self.ny + 1, (self.nx * 0.5) +1)
+
 
         xx = np.repeat(xx, zz.shape[-1], axis=-1)
         yy = np.repeat(yy, zz.shape[-1], axis=-1)
@@ -176,23 +184,23 @@ class Stratigraphy_Grid:
                                              'title': value_name},
                             )
         
-        well_loc_1 = [[3781.25,3781.25,-30000],[3781.25,3781.25,-32000]]
-        well_1 = pv.Line(well_loc_1[0], well_loc_1[1])
-        well_loc_2 = [[3781.25,6218.75,-30000],[3781.25,6218.75,-32000]]
-        well_2 = pv.Line(well_loc_2[0], well_loc_2[1])
-        well_loc_3 = [[6218.75,6218.75,-30000],[6218.75,6218.75,-32000]]
-        well_3 = pv.Line(well_loc_3[0], well_loc_3[1])
-        well_loc_4 = [[6218.75,3781.25,-30000],[6218.75,3781.25,-32000]]
-        well_4 = pv.Line(well_loc_4[0], well_loc_4[1])
+        # well_loc_1 = [[3781.25,3781.25,-30000],[3781.25,3781.25,-32000]]
+        # well_1 = pv.Line(well_loc_1[0], well_loc_1[1])
+        # well_loc_2 = [[3781.25,6218.75,-30000],[3781.25,6218.75,-32000]]
+        # well_2 = pv.Line(well_loc_2[0], well_loc_2[1])
+        # well_loc_3 = [[6218.75,6218.75,-30000],[6218.75,6218.75,-32000]]
+        # well_3 = pv.Line(well_loc_3[0], well_loc_3[1])
+        # well_loc_4 = [[6218.75,3781.25,-30000],[6218.75,3781.25,-32000]]
+        # well_4 = pv.Line(well_loc_4[0], well_loc_4[1])
 
-        actor = plotter.add_point_labels([well_loc_1[0], well_loc_1[1]], ["Injector 1", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_2[0], well_loc_2[1]], ["Injector 2", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_3[0], well_loc_3[1]], ["Injector 3", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_point_labels([well_loc_4[0], well_loc_4[1]], ["Injector 4", ""], font_size=15, point_color="red", text_color="red")
-        actor = plotter.add_mesh(well_1, color="b", line_width=6)
-        actor = plotter.add_mesh(well_2, color="b", line_width=6)
-        actor = plotter.add_mesh(well_3, color="b", line_width=6)
-        actor = plotter.add_mesh(well_4, color="b", line_width=6)
+        # actor = plotter.add_point_labels([well_loc_1[0], well_loc_1[1]], ["Injector 1", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_2[0], well_loc_2[1]], ["Injector 2", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_3[0], well_loc_3[1]], ["Injector 3", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_point_labels([well_loc_4[0], well_loc_4[1]], ["Injector 4", ""], font_size=15, point_color="red", text_color="red")
+        # actor = plotter.add_mesh(well_1, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_2, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_3, color="b", line_width=6)
+        # actor = plotter.add_mesh(well_4, color="b", line_width=6)
         
         if add_observer:
             def my_cpos_callback(*args):
@@ -405,12 +413,21 @@ class Stratigraphy_Grid:
         mesh_x_, mesh_y_ = np.linspace(self.x0, self.x1, self.nx+1), np.linspace(self.y0, self.y1, self.ny+1)
         self.coord_xy = np.meshgrid(mesh_x_,mesh_y_)
 
-    def _compute_zcorns(self, top_surface_name, bottom_surface_name,  deposition_pattern = 'proportional'):
+        top_fault_x = self.coord_xy[0][:, int((self.nx + 1) * 0.25)]
+        bottom_fault_x = self.coord_xy[0][:, int((self.nx + 1) * 0.75)]
+        
+        # fault_x = []
+        # for fault_x_0, fault_x_1 in zip(top_fault_x, bottom_fault_x):
+        #     fault_x.append(np.linspace(fault_x_0,fault_x_1, (self.nx * 0.5) + 1))
+
+        # fault_x = np.array(fault_x).reshape(self.nz + 1, self.ny + 1, (self.nx * 0.5) +1)
+
+    def _compute_zcorns(self, top_surface_name, bottom_surface_name, deposition_pattern = 'proportional'):
         top =self.horizons[top_surface_name]
         bottom = self.horizons[bottom_surface_name]
 
-        zcorn_upper = [] 
-        zcorn_lower = [] 
+        zcorn_upper = []
+        zcorn_lower = []
         for x_, y_ in zip(self.coord_xy[0].flatten(), self.coord_xy[1].flatten()):
             _, _, location = top.ray.intersects_id(np.array([x_,y_,self.base]).reshape(-1,3),
                                                     self.normal_vector,
