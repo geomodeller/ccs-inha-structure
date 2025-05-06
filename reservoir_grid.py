@@ -90,7 +90,7 @@ class Stratigraphy_Grid:
         print(f'{value_name} succesfully added to {formation_name}')
         print(f'formation_grids[formation_name].keys are {list(self.formation_grids[formation_name].keys())}')
 
-    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, fault_x, require_return = False):
+    def load_xx_yy_zz(self, top_surface_name, bottom_surface_name, fault_x = None, require_return = False):
         """
         Load the xx, yy, and zz coordinates for a given top and bottom surface.
 
@@ -129,7 +129,9 @@ class Stratigraphy_Grid:
         zz = np.array(zcorns).T.reshape(-1, self.ny+1, self.nx +1).T
         xx = self.coord_xy[0].reshape(1, self.ny+1, self.nx+1).T
         yy = self.coord_xy[1].reshape(1, self.ny+1, self.nx+1).T
-        fault_zz = np.array(fault_x).T.reshape(-1, self.ny+1, (self.nx * 0.5) +1).T
+
+        if fault_x is not None:
+            fault_zz = np.array(fault_x).T.reshape(-1, self.ny+1, (self.nx * 0.5) +1).T
 
         # fault_x = []
         # for fault_x_0, fault_x_1 in zip(top_fault_x, bottom_fault_x):

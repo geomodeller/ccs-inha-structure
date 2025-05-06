@@ -1,5 +1,6 @@
 import open3d as o3d
 import numpy as np
+import matplotlib.pyplot as plt
 
 # --- Original Helper Functions (kept for reference, but not used in the fast loop) ---
 def create_box_from_vertices_original(vertices):
@@ -58,7 +59,7 @@ def color_mesh_original(mesh, color):
         return
     mesh.paint_uniform_color(color_np)
 
-def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.viridis):
+def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.viridis, improved_ver = True):
     """
     Visualizes a 3D grid with color representing property values at each cell,
     with structure defined by xcorn, ycorn, zcorn. The grid is rendered as a
@@ -103,13 +104,31 @@ def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.vir
 
     # Define the triangle indices *once* relative to a box's 8 vertices (0-7)
     box_triangles_template = np.array([
-        [0, 2, 1], [0, 3, 2],  # Bottom face (ensure consistent winding order - corrected)
-        [4, 5, 6], [4, 6, 7],  # Top face
-        [0, 7, 4], [0, 3, 7],  # Front face (corrected winding)
-        [1, 2, 6], [1, 6, 5],  # Back face (corrected winding)
-        [3, 6, 2], [3, 7, 6],  # Right face (corrected winding)
-        [0, 1, 5], [0, 5, 4]   # Left face
-    ], dtype=np.int32)
+            # Bottom face (z=k+1, normal points -z): Vertices 0, 1, 2, 3
+            # View from -z: CCW order is 0 -> 3 -> 2 -> 1
+            [0, 3, 2], [0, 2, 1],
+
+            # Top face (z=k, normal points +z): Vertices 4, 5, 6, 7
+            # View from +z: CCW order is 4 -> 5 -> 6 -> 7
+            [4, 5, 6], [4, 6, 7],
+
+            # Front face (y=0, normal points -y): Vertices 0, 1, 5, 4
+            # View from -y: CCW order is 0 -> 4 -> 5 -> 1
+            [0, 4, 5], [0, 5, 1],
+
+            # Back face (y=1, normal points +y): Vertices 3, 2, 6, 7
+            # View from +y: CCW order is 3 -> 2 -> 6 -> 7
+            [3, 2, 6], [3, 6, 7],
+
+            # Left face (x=0, normal points -x): Vertices 0, 3, 7, 4
+            # View from -x: CCW order is 0 -> 3 -> 7 -> 4
+            [0, 3, 7], [0, 7, 4],
+
+            # Right face (x=1, normal points +x): Vertices 1, 2, 6, 5
+            # View from +x: CCW order is 1 -> 2 -> 6 -> 5
+            [1, 2, 6], [1, 6, 5],
+
+            ], dtype=np.int32)
 
     for k in range(nz):
         for j in range(ny):
@@ -175,6 +194,15 @@ def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.vir
         combined_mesh.compute_vertex_normals()
 
         # Visualize the combined mesh
-        o3d.visualization.draw_geometries([combined_mesh])
+        if improved_ver:
+            vis = o3d.visualization.Visualizer()
+            vis.create_window()
+            vis.add_geometry(combined_mesh)
+            opt = vis.get_render_option()
+            opt.mesh_show_back_face = True # <--- Add this line
+            vis.run()
+            vis.destroy_window()
+        else:
+            o3d.visualization.draw_geometries([combined_mesh])
     else:
         assert False, 'no boundary voxels are found'
