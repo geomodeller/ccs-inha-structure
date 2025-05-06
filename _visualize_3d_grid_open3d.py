@@ -59,7 +59,15 @@ def color_mesh_original(mesh, color):
         return
     mesh.paint_uniform_color(color_np)
 
-def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.viridis, improved_ver = True):
+def visual_3d_with_structure(property, 
+                             xcorn, 
+                             ycorn, 
+                             zcorn, 
+                             cm_type = plt.cm.viridis, 
+                             improved_ver = True,
+                             add_surrounding_box = True,
+                             vis_opt_json = None,
+                             vis_camera_angle_json = None):
     """
     Visualizes a 3D grid with color representing property values at each cell,
     with structure defined by xcorn, ycorn, zcorn. The grid is rendered as a
@@ -78,6 +86,11 @@ def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.vir
             z-coordinates of the cell corners.
         cm_type (matplotlib colormap): The colormap to use for the visualization.
             Defaults to viridis.
+        improved_ver (bool): Flag to use the improved visualization method.
+        add_surrounding_box (bool): Flag to add an axis-aligned bounding box.
+        vis_opt_json (str, optional): Path to a JSON file with visualization options.
+        vis_camera_angle_json (str, optional): Path to a JSON file with camera parameters.
+
 
     Returns:
         None
@@ -198,11 +211,27 @@ def visual_3d_with_structure(property, xcorn, ycorn, zcorn, cm_type = plt.cm.vir
             vis = o3d.visualization.Visualizer()
             vis.create_window()
             vis.add_geometry(combined_mesh)
+            if add_surrounding_box:
+                # Create a bounding box from the combined_mesh
+                bbox = combined_mesh.get_axis_aligned_bounding_box()
+                bbox.color = (0, 0, 0) # <--- ADD THIS LINE, make bbox black!
+
+                # Add the bounding box geometry to the visualizer
+                vis.add_geometry(bbox)
             opt = vis.get_render_option()
             opt.mesh_show_back_face = True # <--- Add this line
+            if vis_opt_json is not None:
+                opt.load_from_json(vis_opt_json)
+            view_control = vis.get_view_control()
+            if vis_camera_angle_json is not None:
+                param = o3d.io.read_pinhole_camera_parameters(vis_camera_angle_json)
+                view_control.convert_from_pinhole_camera_parameters(param)
+
             vis.run()
             vis.destroy_window()
         else:
+            ## NO LONGER USED... DEPRECIATED
+            print('## NO LONGER USED... DEPRECIATED ##')
             o3d.visualization.draw_geometries([combined_mesh])
     else:
         assert False, 'no boundary voxels are found'
