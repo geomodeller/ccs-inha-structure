@@ -63,6 +63,7 @@ def visual_3d_with_structure(property,
                              xcorn, 
                              ycorn, 
                              zcorn, 
+                             vrange = None,
                              cm_type = plt.cm.viridis, 
                              improved_ver = True,
                              add_surrounding_box = True,
@@ -101,8 +102,11 @@ def visual_3d_with_structure(property,
     vertex_offset = 0  
 
     # compute color values
-    normalized_facies = (property - np.min(property)) / (np.max(property) - np.min(property))
-    colors = cm_type(normalized_facies)[:, :, :, :3].astype(np.float64)
+    if vrange is not None:
+        normalized_property = (property - np.min(vrange)) / (np.max(vrange) - np.min(vrange))
+    else:
+        normalized_property = (property - np.min(property)) / (np.max(property) - np.min(property))
+    colors = cm_type(normalized_property)[:, :, :, :3].astype(np.float64)
 
     # get the dimension of properties
     nz, ny, nx = property.shape
@@ -215,7 +219,6 @@ def visual_3d_with_structure(property,
                 # Create a bounding box from the combined_mesh
                 bbox = combined_mesh.get_axis_aligned_bounding_box()
                 bbox.color = (0, 0, 0) # <--- ADD THIS LINE, make bbox black!
-
                 # Add the bounding box geometry to the visualizer
                 vis.add_geometry(bbox)
             opt = vis.get_render_option()
