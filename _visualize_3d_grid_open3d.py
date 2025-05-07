@@ -95,6 +95,12 @@ def visual_3d_with_structure(property,
 
     Returns:
         None
+
+    TODO:
+        - mame transparent inacitve cells
+        - add well trajectory
+        - add colorbar()
+        - add tick axis
     """
     all_vertices = []
     all_triangles = []
